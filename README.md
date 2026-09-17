@@ -9,3 +9,4 @@ Este repositorio fue creado por **Neiver Granados** y **Kevin Gonzalez**.
 - `proyecto semana3/` - Proyecto de la semana 3
 - `semana4/` - Actividad de la semana 4
 - `semana5/` - Actividad de la semana 5
+- `parcial1/` - Primer parcial (Informe + Video explicativo)
