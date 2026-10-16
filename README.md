@@ -12,3 +12,5 @@ Este repositorio fue creado por **Neiver Granados** y **Kevin Gonzalez**.
 - `parcial1/` - Primer parcial (Informe + Video explicativo)
 ## Semana 9
 - [Informe Semana 9 - WiFi ESP32](semana%209/Informe_Semana9_WiFi_ESP32.docx)
+## Semana 10
+- [Informe Semana 10 - Gonzalez Granados](semana%2010/Informe10_Gonzalez_Granados.pdf)
