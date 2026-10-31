@@ -1,0 +1,8 @@
+# Credenciales reales: NUNCA subir
+main/config.h
+
+# Archivos de entorno / editores
+.env
+.vscode/
+*.bak
+.DS_Store
