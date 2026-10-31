@@ -1,0 +1,14 @@
+// main/config.example.h
+// PLANTILLA: copia este archivo como "config.h" y rellena tus datos.
+#ifndef CONFIG_H
+#define CONFIG_H
+
+// --- Wi-Fi ---
+#define WIFI_SSID      "NOMBRE_DE_TU_RED_WIFI"
+#define WIFI_PASSWORD  "CLAVE_DE_TU_RED_WIFI"
+
+// --- Adafruit IO ---
+#define AIO_USER       "TU_USUARIO_ADAFRUIT_IO"
+#define AIO_KEY_SECRET "TU_AIO_KEY"
+
+#endif
