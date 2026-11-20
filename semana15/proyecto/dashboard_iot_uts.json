@@ -1,0 +1,744 @@
+{
+  "uid": "iot-uts-s15",
+  "title": "Monitoreo Ambiental de Aulas – IoT UTS (Semana 15)",
+  "description": "NodeMCU ESP8266 → Adafruit IO → InfluxDB → Grafana. Umbral dinámico μ + 2σ.",
+  "tags": [
+    "iot",
+    "uts",
+    "influxdb",
+    "semana15"
+  ],
+  "timezone": "browser",
+  "editable": true,
+  "graphTooltip": 1,
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "version": 1,
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "5s",
+      "10s",
+      "30s",
+      "1m",
+      "5m"
+    ]
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "aula",
+        "label": "Aula",
+        "type": "query",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "influxdb_iot"
+        },
+        "query": "import \"influxdata/influxdb/schema\"\nschema.tagValues(bucket: \"iot_aulas\", tag: \"aula\")",
+        "definition": "import \"influxdata/influxdb/schema\"\nschema.tagValues(bucket: \"iot_aulas\", tag: \"aula\")",
+        "refresh": 1,
+        "sort": 1,
+        "includeAll": false,
+        "multi": false,
+        "current": {
+          "text": "Aula_A",
+          "value": "Aula_A"
+        },
+        "options": []
+      },
+      {
+        "name": "magnitud",
+        "label": "Magnitud (tabla)",
+        "type": "custom",
+        "query": "temperatura,humedad,luminosidad",
+        "current": {
+          "text": "temperatura",
+          "value": "temperatura"
+        },
+        "options": [
+          {
+            "text": "temperatura",
+            "value": "temperatura",
+            "selected": true
+          },
+          {
+            "text": "humedad",
+            "value": "humedad",
+            "selected": false
+          },
+          {
+            "text": "luminosidad",
+            "value": "luminosidad",
+            "selected": false
+          }
+        ]
+      },
+      {
+        "name": "intervalo",
+        "label": "Agrupar cada",
+        "type": "custom",
+        "query": "1m,5m,15m,30m,1h",
+        "current": {
+          "text": "5m",
+          "value": "5m"
+        },
+        "options": [
+          {
+            "text": "1m",
+            "value": "1m",
+            "selected": false
+          },
+          {
+            "text": "5m",
+            "value": "5m",
+            "selected": true
+          },
+          {
+            "text": "15m",
+            "value": "15m",
+            "selected": false
+          },
+          {
+            "text": "30m",
+            "value": "30m",
+            "selected": false
+          },
+          {
+            "text": "1h",
+            "value": "1h",
+            "selected": false
+          }
+        ]
+      }
+    ]
+  },
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "gauge",
+      "title": "Estado actual – ${aula}",
+      "description": "Qué tan cerca está la temperatura actual del umbral dinámico: 0 % = temperatura media del aula, 100 % = umbral (μ + 2σ). Verde: normal (por debajo de μ + 1σ, 50 %). Amarillo: precaución (entre μ + 1σ y μ + 2σ). Rojo: alerta, supera el umbral.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influxdb_iot"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 6,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb_iot"
+          },
+          "query": "import \"math\"\nu = from(bucket: \"iot_aulas\")\n  |> range(start: -1h)\n  |> filter(fn: (r) => r._measurement == \"umbral\" and r.aula == \"${aula}\" and (r._field == \"umbral_alto\" or r._field == \"media\"))\n  |> last()\n  |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> group()\n  |> findRecord(fn: (key) => true, idx: 0)\nfrom(bucket: \"iot_aulas\")\n  |> range(start: -1h)\n  |> filter(fn: (r) => r._measurement == \"ambiente\" and r._field == \"temperatura\" and r.aula == \"${aula}\")\n  |> group()\n  |> last()\n  |> map(fn: (r) => ({_time: r._time, _value: (r._value - u.media) / math.mMax(x: u.umbral_alto - u.media, y: 0.4) * 100.0}))"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 0,
+          "min": -50,
+          "max": 150,
+          "displayName": "Nivel hacia el umbral",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "#EAB839",
+                "value": 50
+              },
+              {
+                "color": "red",
+                "value": 100
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Temperatura actual vs. umbral dinámico",
+      "description": "Umbral dinámico = media + 2·desviación estándar del histórico (calculado por alerta_umbral_dinamico.py).",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influxdb_iot"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 0,
+        "w": 6,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb_iot"
+          },
+          "query": "from(bucket: \"iot_aulas\")\n  |> range(start: -1h)\n  |> filter(fn: (r) => r._measurement == \"ambiente\" and r._field == \"temperatura\" and r.aula == \"${aula}\")\n  |> group()\n  |> last()\n  |> keep(columns: [\"_time\", \"_value\"])"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb_iot"
+          },
+          "query": "from(bucket: \"iot_aulas\")\n  |> range(start: -1h)\n  |> filter(fn: (r) => r._measurement == \"umbral\" and r._field == \"umbral_alto\" and r.aula == \"${aula}\")\n  |> group()\n  |> last()\n  |> keep(columns: [\"_time\", \"_value\"])"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "decimals": 2,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#2f6db5"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "A"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Temperatura actual"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Umbral dinámico"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#c62828"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "value_and_name",
+        "orientation": "vertical"
+      }
+    },
+    {
+      "id": 3,
+      "type": "table",
+      "title": "Últimas alertas disparadas (24 h)",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influxdb_iot"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb_iot"
+          },
+          "query": "from(bucket: \"iot_aulas\")\n  |> range(start: -24h)\n  |> filter(fn: (r) => r._measurement == \"alertas\")\n  |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> group()\n  |> keep(columns: [\"_time\", \"aula\", \"temperatura\", \"umbral\"])\n  |> sort(columns: [\"_time\"], desc: true)\n  |> limit(n: 10)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 2,
+          "custom": {
+            "align": "center"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byType",
+              "options": "time"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "time:YYYY-MM-DD HH:mm:ss"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "temperatura"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "_time": "Fecha y hora",
+              "aula": "Aula",
+              "temperatura": "Temperatura (°C)",
+              "umbral": "Umbral (°C)"
+            },
+            "indexByName": {
+              "_time": 0,
+              "aula": 1,
+              "temperatura": 2,
+              "umbral": 3
+            }
+          }
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      }
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Tendencia de temperatura y luminosidad – ${aula} (últimas 24 h)",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influxdb_iot"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 24,
+        "h": 9
+      },
+      "timeFrom": "24h",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb_iot"
+          },
+          "query": "from(bucket: \"iot_aulas\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"ambiente\" and (r._field == \"temperatura\" or r._field == \"luminosidad\") and r.aula == \"${aula}\")\n  |> group(columns: [\"_field\"])\n  |> sort(columns: [\"_time\"])\n  |> aggregateWindow(every: ${intervalo}, fn: mean, createEmpty: false)\n  |> keep(columns: [\"_time\", \"_value\", \"_field\"])"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb_iot"
+          },
+          "query": "from(bucket: \"iot_aulas\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"umbral\" and r._field == \"umbral_alto\" and r.aula == \"${aula}\")\n  |> group(columns: [\"_field\"])\n  |> aggregateWindow(every: ${intervalo}, fn: last, createEmpty: false)\n  |> keep(columns: [\"_time\", \"_value\", \"_field\"])"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "axisLabel": "Temperatura (°C)",
+            "axisPlacement": "left"
+          },
+          "unit": "celsius",
+          "decimals": 1,
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*temperatura.*"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Temperatura"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#2f6db5"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*luminosidad.*"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Luminosidad"
+              },
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "custom.axisLabel",
+                "value": "Luminosidad"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#f2a900"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*umbral.*"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Umbral dinámico (μ + 2σ)"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#c62828"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    6
+                  ]
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 2
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Comparativa de temperatura: Aula A vs. Aula B",
+      "description": "Aula A: NodeMCU real vía Adafruit IO. Aula B: datos simulados (simulador_aula_b.py).",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influxdb_iot"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 17,
+        "w": 14,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb_iot"
+          },
+          "query": "from(bucket: \"iot_aulas\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"ambiente\" and r._field == \"temperatura\")\n  |> group(columns: [\"aula\"])\n  |> sort(columns: [\"_time\"])\n  |> aggregateWindow(every: ${intervalo}, fn: mean, createEmpty: false)\n  |> keep(columns: [\"_time\", \"_value\", \"aula\"])"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "decimals": 1,
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*Aula_A.*"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Aula A (real)"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#2f6db5"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*Aula_B.*"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Aula B (simulada)"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#2e9e5b"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "calcs": [
+            "mean",
+            "max",
+            "min"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 6,
+      "type": "table",
+      "title": "Agregaciones diarias de ${magnitud} – ${aula} (última semana)",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influxdb_iot"
+      },
+      "gridPos": {
+        "x": 14,
+        "y": 17,
+        "w": 10,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb_iot"
+          },
+          "query": "import \"timezone\"\noption location = timezone.fixed(offset: -5h)   // Colombia (UTC-5)\nbase = from(bucket: \"iot_aulas\")\n  |> range(start: -7d)\n  |> filter(fn: (r) => r._measurement == \"ambiente\" and r._field == \"${magnitud}\" and r.aula == \"${aula}\")\n  |> group()\n  |> sort(columns: [\"_time\"])\npromedio = base |> aggregateWindow(every: 1d, fn: mean, createEmpty: false, timeSrc: \"_start\") |> set(key: \"estadistico\", value: \"Promedio\")\nmaximo = base |> aggregateWindow(every: 1d, fn: max, createEmpty: false, timeSrc: \"_start\") |> set(key: \"estadistico\", value: \"Maximo\")\nminimo = base |> aggregateWindow(every: 1d, fn: min, createEmpty: false, timeSrc: \"_start\") |> set(key: \"estadistico\", value: \"Minimo\")\nunion(tables: [promedio, maximo, minimo])\n  |> keep(columns: [\"_time\", \"estadistico\", \"_value\"])\n  |> group()\n  |> pivot(rowKey: [\"_time\"], columnKey: [\"estadistico\"], valueColumn: \"_value\")\n  |> sort(columns: [\"_time\"], desc: true)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 2,
+          "custom": {
+            "align": "center"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byType",
+              "options": "time"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "time:YYYY-MM-DD"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Maximo"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#c62828"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Minimo"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#2f6db5"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "_time": "Día",
+              "Promedio": "Promedio",
+              "Maximo": "Máximo",
+              "Minimo": "Mínimo"
+            },
+            "indexByName": {
+              "_time": 0,
+              "Promedio": 1,
+              "Maximo": 2,
+              "Minimo": 3
+            }
+          }
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      }
+    }
+  ]
+}

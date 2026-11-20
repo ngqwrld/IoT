@@ -1,0 +1,5 @@
+# Clave real de Adafruit IO: NUNCA subir
+aio_key.txt
+# Archivos generados por Python
+__pycache__/
+*.pyc

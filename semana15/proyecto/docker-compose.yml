@@ -1,0 +1,34 @@
+# Alternativa con Docker (equivalente a la instalacion manual).
+# Uso: docker compose up -d   ->  InfluxDB en :8086 y Grafana en :3000
+services:
+  influxdb:
+    image: influxdb:2.7
+    container_name: influxdb_iot
+    ports:
+      - "8086:8086"
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=admin
+      - DOCKER_INFLUXDB_INIT_PASSWORD=admin12345
+      - DOCKER_INFLUXDB_INIT_ORG=uts
+      - DOCKER_INFLUXDB_INIT_BUCKET=iot_aulas
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=uts-iot-semana15-token-local
+    volumes:
+      - influx_data:/var/lib/influxdb2
+
+  grafana:
+    image: grafana/grafana-oss:latest
+    container_name: grafana_iot
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin12345
+    depends_on:
+      - influxdb
+    volumes:
+      - grafana_data:/var/lib/grafana
+
+volumes:
+  influx_data:
+  grafana_data:

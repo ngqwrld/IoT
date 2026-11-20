@@ -1,0 +1,21 @@
+SEMANA 15 - VISUALIZACION HISTORICA Y ALERTAS DINAMICAS
+========================================================
+Antes de empezar: conecta el NodeMCU para que siga publicando en Adafruit IO.
+
+1) Doble clic en EJECUTAR_TODO.bat
+   (descarga e instala InfluxDB y Grafana, configura todo y abre el dashboard)
+   Si Windows avisa "Windows protegio su equipo": Mas informacion -> Ejecutar de todas formas.
+   Si el Firewall pregunta por influxd o grafana: Permitir.
+
+2) Con el dashboard abierto (http://localhost:3000, admin / admin12345),
+   toma una captura (Win + Shift + S) y guardala como  evidencias\dashboard.png
+
+3) Doble clic en SIMULAR_ANOMALIA.bat
+   Espera ~20 s: la ventana "3 Alertas dinamicas" mostrara la ALERTA y se crea
+   una grafica en la carpeta evidencias. (Opcional: captura de esa ventana como
+   evidencias\consola.png)
+
+4) Doble clic en GENERAR_INFORME.bat
+   Crea Semana15_Visualizacion_Alertas_IoT.docx con todas las evidencias.
+
+Para volver a usarlo otro dia: iniciar_servicios.bat y luego iniciar_scripts.bat
